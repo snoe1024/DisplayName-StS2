@@ -40,20 +40,32 @@ public static class PlatformUtilGetPlayerNameRawPatch
         // __result below (see NMultiplayerPlayerExpandedStateReadyPatch / DisplayNameConfig.ShowSteamIdAlongside).
         RawPlatformNameCache.Set(playerId, __result);
 
-        if (playerId == PlatformUtil.GetLocalPlayerId(platformType))
+        // Logged unconditionally (not just on the local branch) so we can directly see, for every single
+        // call, whether playerId actually matches GetLocalPlayerId(platformType) -- if it mysteriously
+        // doesn't for what should be the local player's own nameplate, that alone would explain the local
+        // override silently never firing without needing to suspect another mod at all.
+        ulong localPlayerId = PlatformUtil.GetLocalPlayerId(platformType);
+        MainFile.Logger.Info($"DisplayName: GetPlayerNameRaw called: platformType={platformType}, playerId={playerId}, localPlayerId={localPlayerId}, vanillaResult='{__result}'.");
+
+        if (playerId == localPlayerId)
         {
             string displayName = DisplayNameConfig.DisplayName;
             if (!string.IsNullOrWhiteSpace(displayName))
             {
                 __result = displayName;
             }
-            MainFile.Logger.Info($"DisplayName: GetPlayerNameRaw postfix for LOCAL player (playerId={playerId}): DisplayName='{displayName}' -> returning __result='{__result}'.");
+            MainFile.Logger.Info($"DisplayName: -> treated as LOCAL player. DisplayName='{displayName}' -> returning __result='{__result}'.");
             return;
         }
 
         if (RemoteDisplayNames.TryGet(playerId, out string remoteDisplayName) && !string.IsNullOrWhiteSpace(remoteDisplayName))
         {
             __result = remoteDisplayName;
+            MainFile.Logger.Info($"DisplayName: -> treated as REMOTE player with known DisplayName. Returning __result='{__result}'.");
+        }
+        else
+        {
+            MainFile.Logger.Info($"DisplayName: -> treated as REMOTE player with NO known DisplayName (RemoteDisplayNames has no entry, or it's empty). Leaving vanilla result as-is: '{__result}'.");
         }
     }
 
