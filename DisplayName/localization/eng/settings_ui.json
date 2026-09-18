@@ -1,0 +1,9 @@
+{
+  "DISPLAYNAME.mod_title": "Display Name",
+
+  "DISPLAYNAME-DISPLAY_NAME.title": "Display Name",
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "This will be displayed as your name in multiplayer. Leave blank to use your Steam username as-is.",
+
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.title": "Show Steam Username Alongside",
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.hover.desc": "On the player screen, the Steam username is also displayed in small parentheses below and to the right of the display name.\nEven if a user with different settings views their own player screen, your settings will take precedence."
+}

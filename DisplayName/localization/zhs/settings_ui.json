@@ -1,0 +1,9 @@
+{
+  "DISPLAYNAME.mod_title": "显示名称",
+
+  "DISPLAYNAME-DISPLAY_NAME.title": "显示名称",
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "将在多人游戏中显示为你的名称。留空则直接使用你的Steam用户名。",
+
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.title": "同时显示Steam用户名",
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.hover.desc": "在玩家画面中，Steam用户名还会以小括号的形式显示在显示名称的右下方。\n即使设置不同的其他玩家查看自己的玩家画面，也会优先使用你的设置。"
+}

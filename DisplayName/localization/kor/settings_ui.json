@@ -1,0 +1,9 @@
+{
+  "DISPLAYNAME.mod_title": "표시 이름",
+
+  "DISPLAYNAME-DISPLAY_NAME.title": "표시 이름",
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "멀티플레이에서 여러분의 이름으로 표시됩니다. 비워두면 Steam 사용자 이름을 그대로 사용합니다.",
+
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.title": "Steam 사용자 이름도 함께 표시",
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.hover.desc": "플레이어 화면에서는 표시 이름의 오른쪽 아래에 작은 괄호로 Steam 사용자 이름도 함께 표시됩니다.\n설정이 다른 사용자가 자신의 플레이어 화면을 보더라도, 여러분의 설정이 우선 적용됩니다."
+}

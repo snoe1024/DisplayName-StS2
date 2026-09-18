@@ -1,0 +1,9 @@
+{
+  "DISPLAYNAME.mod_title": "Nombre para mostrar",
+
+  "DISPLAYNAME-DISPLAY_NAME.title": "Nombre para mostrar",
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "Esto se mostrará como tu nombre en multijugador. Deja el campo en blanco para usar tu nombre de usuario de Steam tal cual.",
+
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.title": "Mostrar también el nombre de usuario de Steam",
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.hover.desc": "En la pantalla del jugador, el nombre de usuario de Steam también se muestra en pequeño entre paréntesis, debajo y a la derecha del nombre para mostrar.\nAunque un usuario con ajustes distintos vea su propia pantalla de jugador, tus ajustes tendrán prioridad."
+}

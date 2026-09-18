@@ -1,0 +1,69 @@
+using System.Collections.Generic;
+using BaseLib.Config;
+using Godot;
+
+namespace DisplayName.DisplayNameCode.Config;
+
+[ConfigHoverTipsByDefault]
+public sealed class DisplayNameConfig : SimpleModConfig
+{
+    // Matches Steam's own display name length limit (32 characters). Not attempting to replicate Steam's
+    // additional multi-byte/character-class rules -- this mod is only ever used among friends, so there's
+    // no anti-troll reason to bother.
+    private const int MaxDisplayNameLength = 32;
+
+    private static string _displayName = "";
+
+    /// <summary>
+    /// The name shown for this player in multiplayer instead of their Steam username. One name per user
+    /// (not per save profile) -- matches how every other multiplayer game handles a display name, rather
+    /// than the original Slay the Spire's per-save-profile convention this mod initially (mistakenly)
+    /// copied. A plain `string` property is rendered as a text field automatically by SimpleModConfig,
+    /// no attribute needed.
+    /// </summary>
+    public static string DisplayName
+    {
+        get => _displayName;
+        set => _displayName = (value ?? "").Length > MaxDisplayNameLength ? value!.Substring(0, MaxDisplayNameLength) : value ?? "";
+    }
+
+    /// <summary>
+    /// When enabled, this player's own Steam username is also shown (in small text, in parentheses) next
+    /// to their DisplayName on OTHER players' screens, in the multiplayer player-inventory screen (opened
+    /// by clicking a player during a run). This is the subject's own consent, broadcast to others -- see
+    /// DisplayNameNetworking / RemoteShowSteamIdFlags / NMultiplayerPlayerExpandedStateReadyPatch.
+    /// </summary>
+    public static bool ShowSteamIdAlongside { get; set; } = false;
+
+    public override void SetupConfigUI(Control optionContainer)
+    {
+        GenerateOptionsForAllProperties(optionContainer);
+
+        // BaseLib's auto-generated LineEdit row renders its text noticeably smaller than the rest of the
+        // settings screen, and doesn't enforce any length limit on typing (only our setter's clamp on
+        // commit). Reach into the generated control tree to fix both: a larger font, and a real MaxLength
+        // so typing itself stops at the limit instead of silently truncating on save.
+        foreach (LineEdit lineEdit in FindLineEdits(optionContainer))
+        {
+            lineEdit.MaxLength = MaxDisplayNameLength;
+            int currentFontSize = lineEdit.GetThemeFontSize("font_size");
+            lineEdit.AddThemeFontSizeOverride("font_size", Mathf.FloorToInt(Mathf.Max(currentFontSize, 12) * 1.5));
+        }
+    }
+
+    private static IEnumerable<LineEdit> FindLineEdits(Node node)
+    {
+        foreach (Node child in node.GetChildren())
+        {
+            if (child is LineEdit lineEdit)
+            {
+                yield return lineEdit;
+            }
+
+            foreach (LineEdit nested in FindLineEdits(child))
+            {
+                yield return nested;
+            }
+        }
+    }
+}

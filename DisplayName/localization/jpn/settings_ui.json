@@ -1,0 +1,9 @@
+{
+  "DISPLAYNAME.mod_title": "ニックネームmod",
+
+  "DISPLAYNAME-DISPLAY_NAME.title": "表示名",
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "マルチプレイであなた名前として表示されます。空欄の場合、Steamのユーザー名がそのまま表示されます。",
+
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.title": "Steamユーザー名も併記する",
+  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.hover.desc": "プレイヤー画面で、表示名の右下に小さくカッコ書きでSteamユーザー名も表示します。\n設定の異なるユーザーが自身のプレイヤー画面を見ても自身の設定が優先されます。"
+}
