@@ -1,29 +1,37 @@
+using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Config;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
+using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Multiplayer.Game.Lobby;
-using DisplayName.DisplayNameCode;
+using MegaCrit.Sts2.Core.Platform;
 
 namespace DisplayName.DisplayNameCode.Multiplayer;
 
 /// <summary>
 /// Wires DisplayName (and the ShowSteamIdAlongside consent flag) announcements into a multiplayer
 /// lobby/run. Every peer (host or client) broadcasts its own current state whenever ANYONE connects --
-/// including itself, since <see cref="StartRunLobby.PlayerConnected"/> fires for the local player's own
-/// join too. This covers both directions without any host-authority special-casing:
+/// including itself. This covers both directions without any host-authority special-casing:
 ///  - A freshly-joined peer announces itself to everyone already present.
 ///  - Everyone already present re-announces themselves so the newcomer learns their state too (messages
 ///    broadcast before a peer finished joining are never delivered to it -- see NetHostGameService.SetPeerReadyForBroadcasting
 ///    doc comment -- so a plain one-time broadcast at startup would not reach later joiners).
 /// A remote player's DisplayName is only substituted in when non-empty (see PlatformUtilGetPlayerNameRawPatch);
 /// otherwise the vanilla Steam-username lookup is used as-is.
+///
+/// There are THREE separate lobby/connection-lifecycle classes in this game (confirmed by reading the
+/// decompiled source, see sts2_dev_knowledge/topics/game-fundamentals.md): StartRunLobby (starting a brand
+/// new run), LoadRunLobby (resuming a run from a save file), and RunLobby (reconnecting while a run is
+/// already in progress). Each needs its own wiring since they don't share a common base type/event. Only
+/// StartRunLobby and LoadRunLobby are wired so far; RunLobby (mid-run reconnect) is a known follow-up gap.
 /// </summary>
 internal static class DisplayNameNetworking
 {
     private static StartRunLobby? _activeLobby;
+    private static LoadRunLobby? _activeLoadRunLobby;
 
     public static void OnLobbyCreated(StartRunLobby lobby)
     {
-        MainFile.Logger.Info($"DisplayName: lobby created (NetService.Type={lobby.NetService.Type}, NetId={lobby.NetService.NetId}), registering sync handlers.");
+        MainFile.Logger.Info($"DisplayName: StartRunLobby created (NetService.Type={lobby.NetService.Type}, NetId={lobby.NetService.NetId}), registering sync handlers.");
         _activeLobby = lobby;
         RemoteDisplayNames.Clear();
         RemoteShowSteamIdFlags.Clear();
@@ -41,7 +49,7 @@ internal static class DisplayNameNetworking
             return;
         }
 
-        MainFile.Logger.Info("DisplayName: lobby disconnected, unregistering sync handlers and clearing remote cache.");
+        MainFile.Logger.Info("DisplayName: StartRunLobby disconnected, unregistering sync handlers and clearing remote cache.");
         lobby.NetService.UnregisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
         lobby.PlayerConnected -= OnPlayerConnected;
         if (_activeLobby == lobby)
@@ -52,22 +60,56 @@ internal static class DisplayNameNetworking
         }
     }
 
+    // LoadRunLobby (resuming a run from a save file) has no PlayerConnected-style event of its own -- it
+    // only calls methods on its ILoadRunLobbyListener. So instead of one event subscription, several of its
+    // own "someone (re)connected" methods are individually Harmony-postfixed to call AnnounceSelf():
+    // AddLocalHostPlayer (host adds itself), the client-join-response constructor overload (client just
+    // joined), HandleClientLoadJoinRequestMessage (host learns of a new client), and
+    // HandlePlayerReconnectedMessage (an existing client learns of another (re)connecting player). See
+    // LoadRunLobbyPatch.cs.
+    public static void OnLoadRunLobbyCreated(LoadRunLobby lobby)
+    {
+        MainFile.Logger.Info($"DisplayName: LoadRunLobby created (NetService.Type={lobby.NetService.Type}, NetId={lobby.NetService.NetId}), registering sync handlers.");
+        _activeLoadRunLobby = lobby;
+        RemoteDisplayNames.Clear();
+        RemoteShowSteamIdFlags.Clear();
+        lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
+    }
+
+    public static void OnLoadRunLobbyCleanedUp(LoadRunLobby lobby, bool disconnectSession)
+    {
+        if (!disconnectSession)
+        {
+            return;
+        }
+
+        MainFile.Logger.Info("DisplayName: LoadRunLobby disconnected, unregistering sync handlers and clearing remote cache.");
+        lobby.NetService.UnregisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
+        if (_activeLoadRunLobby == lobby)
+        {
+            _activeLoadRunLobby = null;
+            RemoteDisplayNames.Clear();
+            RemoteShowSteamIdFlags.Clear();
+        }
+    }
+
     // Called whenever anything in DisplayNameConfig changes (wired from MainFile via
     // DisplayNameConfig.ConfigChanged) -- covers both the DisplayName text field and the
     // ShowSteamIdAlongside checkbox, since both are part of the same broadcasted state.
     public static void NotifyLocalStateChanged()
     {
-        BroadcastOwnState();
+        AnnounceSelf();
     }
 
     private static void OnPlayerConnected(StartRunLobbyPlayer player)
     {
-        BroadcastOwnState();
+        AnnounceSelf();
     }
 
-    private static void BroadcastOwnState()
+    private static void AnnounceSelf()
     {
-        if (_activeLobby == null)
+        INetGameService? netService = _activeLobby?.NetService ?? _activeLoadRunLobby?.NetService;
+        if (netService == null)
         {
             return;
         }
@@ -77,14 +119,14 @@ internal static class DisplayNameNetworking
             DisplayName = DisplayNameConfig.DisplayName,
             ShowSteamIdAlongside = DisplayNameConfig.ShowSteamIdAlongside,
         };
-        MainFile.Logger.Info($"DisplayName: broadcasting own state (DisplayName='{message.DisplayName}', ShowSteamIdAlongside={message.ShowSteamIdAlongside}) as NetId={_activeLobby.NetService.NetId}.");
-        _activeLobby.NetService.SendMessage(message);
+        MainFile.Logger.Info($"DisplayName: broadcasting own state (DisplayName='{message.DisplayName}', ShowSteamIdAlongside={message.ShowSteamIdAlongside}) as NetId={netService.NetId}.");
+        netService.SendMessage(message);
     }
 
     private static void HandleMessage(DisplayNameSyncMessage message, ulong senderId)
     {
         MainFile.Logger.Info($"DisplayName: received sync from senderId={senderId} (DisplayName='{message.DisplayName}', ShowSteamIdAlongside={message.ShowSteamIdAlongside}).");
-        if (_activeLobby != null && senderId == _activeLobby.NetService.NetId)
+        if (senderId == PlatformUtil.GetLocalPlayerId(PlatformUtil.PrimaryPlatform))
         {
             MainFile.Logger.Info("DisplayName: ignoring sync message that looped back to ourselves.");
             return;
