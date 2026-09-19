@@ -1,6 +1,5 @@
 using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Config;
-using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Multiplayer.Game.Lobby;
 using MegaCrit.Sts2.Core.Platform;
@@ -23,11 +22,27 @@ namespace DisplayName.DisplayNameCode.Multiplayer;
 /// new run), LoadRunLobby (resuming a run from a save file), and RunLobby (reconnecting while a run is
 /// already in progress). Each needs its own wiring since they don't share a common base type/event. Only
 /// StartRunLobby and LoadRunLobby are wired so far; RunLobby (mid-run reconnect) is a known follow-up gap.
+///
+/// NOTE: StartRunLobby's connection-triggering methods are Harmony-patched by NAME (see
+/// StartRunLobbyPlayerConnectedPatch.cs) rather than subscribed to via its PlayerConnected C# event,
+/// specifically to stay compatible with both the Production and Public Beta branches: the event's generic
+/// type parameter is named StartRunLobbyPlayer on Beta but LobbyPlayer on Production (0.107.1) -- same
+/// field layout, different type name -- which would otherwise be a hard compile-time dependency on
+/// whichever branch's sts2.dll happens to be referenced at build time. We never used the event's payload
+/// anyway, so patching the (name-stable) methods that raise it sidesteps the type entirely.
 /// </summary>
 internal static class DisplayNameNetworking
 {
     private static StartRunLobby? _activeLobby;
     private static LoadRunLobby? _activeLoadRunLobby;
+
+    /// <summary>
+    /// True only while an actual lobby/run session is active. PlatformUtilGetPlayerNameRawPatch gates its
+    /// remote-name substitution on this so that pre-connection screens (e.g. the "Join Friend" list, which
+    /// queries PlatformUtil for a friend's Steam ID before any lobby for THIS session exists) can never
+    /// show a stale DisplayName cached from an earlier session with that same person.
+    /// </summary>
+    public static bool HasActiveLobby => _activeLobby != null || _activeLoadRunLobby != null;
 
     public static void OnLobbyCreated(StartRunLobby lobby)
     {
@@ -36,7 +51,6 @@ internal static class DisplayNameNetworking
         RemoteDisplayNames.Clear();
         RemoteShowSteamIdFlags.Clear();
         lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
-        lobby.PlayerConnected += OnPlayerConnected;
     }
 
     // Mirrors StartRunLobbyCleanUpPatch's contract: disconnectSession is false when the lobby is merely
@@ -51,7 +65,6 @@ internal static class DisplayNameNetworking
 
         MainFile.Logger.Info("DisplayName: StartRunLobby disconnected, unregistering sync handlers and clearing remote cache.");
         lobby.NetService.UnregisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
-        lobby.PlayerConnected -= OnPlayerConnected;
         if (_activeLobby == lobby)
         {
             _activeLobby = null;
@@ -93,15 +106,13 @@ internal static class DisplayNameNetworking
         }
     }
 
-    // Called whenever anything in DisplayNameConfig changes (wired from MainFile via
-    // DisplayNameConfig.ConfigChanged) -- covers both the DisplayName text field and the
-    // ShowSteamIdAlongside checkbox, since both are part of the same broadcasted state.
+    // Public entry point for every trigger that should (re-)announce our own current state:
+    // - DisplayNameConfig.ConfigChanged (wired from MainFile) -- covers both the DisplayName text field
+    //   and the ShowSteamIdAlongside checkbox, since both are part of the same broadcasted state.
+    // - Every StartRunLobby/LoadRunLobby "someone (re)connected" method patched by name (see
+    //   StartRunLobbyPlayerConnectedPatch.cs / LoadRunLobbyPatch.cs) -- none of them need the connecting
+    //   player's identity from us, we just re-broadcast unconditionally whenever any of them fire.
     public static void NotifyLocalStateChanged()
-    {
-        AnnounceSelf();
-    }
-
-    private static void OnPlayerConnected(StartRunLobbyPlayer player)
     {
         AnnounceSelf();
     }

@@ -13,9 +13,22 @@ namespace DisplayName.DisplayNameCode.Patch;
 /// Substitutes a resolved player name with their DisplayName wherever the game resolves a player name
 /// (nameplates, hover tips, etc. all funnel through this single method):
 /// - For the local player, always uses this account's own <see cref="DisplayNameConfig.DisplayName"/>.
-/// - For remote players, uses whatever they broadcast via <see cref="DisplayNameNetworking"/>, if anything.
+/// - For remote players, uses whatever they broadcast via <see cref="DisplayNameNetworking"/>, if anything,
+///   but ONLY while a lobby/run is actually active (<see cref="DisplayNameNetworking.HasActiveLobby"/>).
+///   Outside of that (e.g. the main menu's "Join Friend" list, which resolves a friend's name before any
+///   lobby for THIS session exists) a Steam username is what correctly identifies who you're about to
+///   connect to; showing a DisplayName cached from a past session there would be misleading.
 /// If nothing is set (empty DisplayName, or no sync message received yet for that player), falls through
 /// to the vanilla result untouched, i.e. their Steam username.
+///
+/// [HarmonyPriority(Priority.Last)]: confirmed via godot.log (real playtest, 2026-09) that another mod
+/// ("spirectl.synthetic-lobby-names", a local-network mirroring/dev tool) ALSO patches this exact method.
+/// Our own postfix logic was computing the correct DisplayName on every call, but the OTHER mod's postfix
+/// could still run after ours (same default priority, tie-broken by patch-application order, which we
+/// don't control) and clobber __result afterward -- indistinguishable from our own logic being wrong
+/// without comparing against Harmony.GetPatchInfo. Forcing Priority.Last means our postfix is the outermost
+/// one (runs furthest from the original method), so whatever we set __result to is what every caller
+/// actually sees, regardless of what other mods do to this method.
 /// </summary>
 [HarmonyPatch(typeof(PlatformUtil), nameof(PlatformUtil.GetPlayerNameRaw))]
 public static class PlatformUtilGetPlayerNameRawPatch
@@ -23,6 +36,7 @@ public static class PlatformUtilGetPlayerNameRawPatch
     private static bool _loggedPatchInfoOnce;
 
     [HarmonyPostfix]
+    [HarmonyPriority(Priority.Last)]
     public static void Postfix(PlatformType platformType, ulong playerId, ref string __result)
     {
         if (!_loggedPatchInfoOnce)
@@ -55,6 +69,12 @@ public static class PlatformUtilGetPlayerNameRawPatch
                 __result = displayName;
             }
             MainFile.Logger.Info($"DisplayName: -> treated as LOCAL player. DisplayName='{displayName}' -> returning __result='{__result}'.");
+            return;
+        }
+
+        if (!DisplayNameNetworking.HasActiveLobby)
+        {
+            MainFile.Logger.Info("DisplayName: -> no active lobby/run; leaving vanilla result as-is (avoids showing a DisplayName cached from a past session before this one's sync has even started).");
             return;
         }
 
