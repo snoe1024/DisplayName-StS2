@@ -30,9 +30,9 @@ public partial class MainFile : Node
         Config.Load();
         ModConfigRegistry.Register(ModId, Config);
 
-        // Lets a player who flips ShowSteamIdAlongside while already sitting in a lobby/run immediately
-        // re-broadcast that consent flag, rather than leaving other clients stuck with whatever was true
-        // when they last connected.
+        // Lets a player who edits their DisplayName while already sitting in a lobby/run immediately
+        // re-broadcast it, rather than leaving other clients stuck with whatever was set when they last
+        // connected.
         Config.ConfigChanged += (_, _) => DisplayNameNetworking.NotifyLocalStateChanged();
 
         Harmony harmony = new(ModId);

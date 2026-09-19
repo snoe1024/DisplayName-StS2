@@ -4,22 +4,15 @@ using MegaCrit.Sts2.Core.Multiplayer.Transport;
 
 namespace DisplayName.DisplayNameCode.Multiplayer;
 
-// Announces the sender's own DisplayName (and their own consent to reveal their Steam username
-// alongside it) to everyone else in the lobby/run. Every peer (host and clients alike) sends this about
-// THEMSELVES only -- there is no host authority here, unlike SingleplayerCard's config sync, since each
-// player owns their own name and their own privacy preference. ShouldBroadcast makes the host relay it to
-// every other connected peer automatically (see NetHostGameService.OnPacketReceived); ShouldBuffer keeps
-// it from being dropped if it arrives while the local NetMessageBus is still buffering (see
+// Announces the sender's own DisplayName to everyone else in the lobby/run. Every peer (host and clients
+// alike) sends this about THEMSELVES only -- there is no host authority here, unlike SingleplayerCard's
+// config sync, since each player owns their own name. ShouldBroadcast makes the host relay it to every
+// other connected peer automatically (see NetHostGameService.OnPacketReceived); ShouldBuffer keeps it from
+// being dropped if it arrives while the local NetMessageBus is still buffering (see
 // NetMessageBus.SetBufferMessages).
-//
-// ShowSteamIdAlongside is the SENDER's own DisplayNameConfig.ShowSteamIdAlongside value -- i.e. "do I
-// consent to having MY Steam username shown next to MY name on other people's screens", not "do I want to
-// see other people's Steam usernames". Each viewer's UI must therefore gate on the SUBJECT player's
-// broadcasted flag (see NMultiplayerPlayerExpandedStateReadyPatch), never on the local viewer's own config.
 internal struct DisplayNameSyncMessage : INetMessage, IPacketSerializable
 {
     public string DisplayName;
-    public bool ShowSteamIdAlongside;
 
     public bool ShouldBroadcast => true;
 
@@ -36,12 +29,10 @@ internal struct DisplayNameSyncMessage : INetMessage, IPacketSerializable
     public void Serialize(PacketWriter writer)
     {
         writer.WriteString(DisplayName);
-        writer.WriteBool(ShowSteamIdAlongside);
     }
 
     public void Deserialize(PacketReader reader)
     {
         DisplayName = reader.ReadString();
-        ShowSteamIdAlongside = reader.ReadBool();
     }
 }

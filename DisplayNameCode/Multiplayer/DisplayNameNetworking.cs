@@ -8,9 +8,9 @@ using MegaCrit.Sts2.Core.Platform;
 namespace DisplayName.DisplayNameCode.Multiplayer;
 
 /// <summary>
-/// Wires DisplayName (and the ShowSteamIdAlongside consent flag) announcements into a multiplayer
-/// lobby/run. Every peer (host or client) broadcasts its own current state whenever ANYONE connects --
-/// including itself. This covers both directions without any host-authority special-casing:
+/// Wires DisplayName announcements into a multiplayer lobby/run. Every peer (host or client) broadcasts
+/// its own current DisplayName whenever ANYONE connects -- including itself. This covers both directions
+/// without any host-authority special-casing:
 ///  - A freshly-joined peer announces itself to everyone already present.
 ///  - Everyone already present re-announces themselves so the newcomer learns their state too (messages
 ///    broadcast before a peer finished joining are never delivered to it -- see NetHostGameService.SetPeerReadyForBroadcasting
@@ -50,7 +50,6 @@ internal static class DisplayNameNetworking
         MainFile.Logger.Info($"DisplayName: StartRunLobby created (NetService.Type={lobby.NetService.Type}, NetId={lobby.NetService.NetId}), registering sync handlers.");
         _activeLobby = lobby;
         RemoteDisplayNames.Clear();
-        RemoteShowSteamIdFlags.Clear();
         lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
     }
 
@@ -70,7 +69,6 @@ internal static class DisplayNameNetworking
         {
             _activeLobby = null;
             RemoteDisplayNames.Clear();
-            RemoteShowSteamIdFlags.Clear();
         }
     }
 
@@ -86,7 +84,6 @@ internal static class DisplayNameNetworking
         MainFile.Logger.Info($"DisplayName: LoadRunLobby created (NetService.Type={lobby.NetService.Type}, NetId={lobby.NetService.NetId}), registering sync handlers.");
         _activeLoadRunLobby = lobby;
         RemoteDisplayNames.Clear();
-        RemoteShowSteamIdFlags.Clear();
         lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
     }
 
@@ -103,13 +100,11 @@ internal static class DisplayNameNetworking
         {
             _activeLoadRunLobby = null;
             RemoteDisplayNames.Clear();
-            RemoteShowSteamIdFlags.Clear();
         }
     }
 
-    // Public entry point for every trigger that should (re-)announce our own current state:
-    // - DisplayNameConfig.ConfigChanged (wired from MainFile) -- covers both the DisplayName text field
-    //   and the ShowSteamIdAlongside checkbox, since both are part of the same broadcasted state.
+    // Public entry point for every trigger that should (re-)announce our own current DisplayName:
+    // - DisplayNameConfig.ConfigChanged (wired from MainFile).
     // - Every StartRunLobby/LoadRunLobby "someone (re)connected" method patched by name (see
     //   StartRunLobbyPlayerConnectedPatch.cs / LoadRunLobbyPatch.cs) -- none of them need the connecting
     //   player's identity from us, we just re-broadcast unconditionally whenever any of them fire.
@@ -121,17 +116,25 @@ internal static class DisplayNameNetworking
     // Real playtest logs showed NetHostGameService.SendMessage silently no-op (it logs its own error and
     // returns, it does not throw) when called from inside one of our connection-triggering Harmony
     // patches, because NetService.IsConnected was still false at that exact synchronous moment -- even
-    // though we were reacting to a just-received real packet from an actually-connected peer. First seen
-    // while a third-party "CouchCoop" mod's custom NetHost wrapper (DualNetHost) was in the call stack, but
-    // CONFIRMED STILL HAPPENING on both host and client after removing CouchCoop entirely (and after
-    // "spirectl", the other suspicious mod, was also gone per Harmony.GetPatchInfo) -- so this is NOT
-    // (only) a CouchCoop-specific problem; the actual cause is still unknown. Per SteamHost.cs, IsConnected
-    // should already be true well before any client even attempts to join (it's set once, synchronously,
-    // right after the listen socket is created during hosting setup, and never reset except at shutdown),
-    // so seeing it false while real packets are flowing is unexplained so far. Extended the retry window
-    // substantially (30 attempts, 1s apart = 30s) since the short window clearly wasn't enough, but this is
-    // a band-aid, not a real fix -- see CLAUDE.md for the open investigation and suggested next steps
-    // (breakpoint on this method / on SteamHost._isConnected to see what's actually going on live).
+    // though we were reacting to a just-received real packet from an actually-connected peer.
+    //
+    // CONFIRMED (2026-09-20 log, LoadRunLobby/"resume from save" flow, host side): this is NOT a
+    // third-party mod issue (CouchCoop/spirectl are both gone). The genuinely new lead from that log:
+    // the host's SteamHost cycles through THREE separate StartHost -> StopHost -> StartHost -> StopHost
+    // -> StartHost calls within about a second of the "resume from save" screen opening (grep the raw
+    // godot.log for "Initializing Steam host" / "Stopping host" to see it), all before the client actually
+    // joins. StartHost is asynchronous (awaits a real Steamworks CreateLobby round-trip) and
+    // SteamHost._isConnected is only flipped true at the very end of it; LoadRunLobby is constructed
+    // immediately, without waiting for that to resolve. So IsConnected legitimately starts false, and if
+    // the host's own StartHost/StopHost churn keeps racing against it, our checks may simply never land in
+    // a window where it has actually finished. What's still unexplained: per SteamHost.cs, once a
+    // connection status callback fires (proof _netHost.IsConnected must already be true, since that field
+    // is set on the line immediately before the callback is registered), it should read true from then on
+    // for the rest of that SteamHost's life -- yet every one of our checks kept reading false for the
+    // entire remainder of the session, well after real clients had already connected. Added a second
+    // diagnostic below (NetHost instance identity) to check whether NetHostGameService.NetHost itself is
+    // silently changing under us. Extended the retry window to 30 attempts (30s) as a stopgap -- not a
+    // real fix -- see CLAUDE.md for the current state of this investigation.
     private static void AnnounceSelf(int attemptsRemaining)
     {
         INetGameService? netService = _activeLobby?.NetService ?? _activeLoadRunLobby?.NetService;
@@ -142,11 +145,15 @@ internal static class DisplayNameNetworking
 
         if (!netService.IsConnected)
         {
-            // Logging the concrete runtime type + instance identity + NetId so we can tell, from the log
-            // alone, whether this is genuinely the same NetService instance throughout a retry chain (and
-            // the same one StartRunLobby/LoadRunLobby itself is using), or whether something is handing us
-            // a different/stale one.
-            string netServiceIdentity = $"{netService.GetType().FullName}#{netService.GetHashCode()} (NetId={netService.NetId}, Type={netService.Type})";
+            // Logging the concrete runtime type + instance identity + NetId, plus (when castable) the
+            // underlying INetHostGameService.NetHost's own identity + IsConnected read directly -- so we
+            // can tell from the log alone whether NetService itself is stable across a retry chain, AND
+            // whether its NetHost field is quietly pointing at a different transport object than what
+            // last reported false.
+            string netHostIdentity = netService is INetHostGameService netHostGameService
+                ? $", NetHost={netHostGameService.NetHost?.GetType().FullName}#{netHostGameService.NetHost?.GetHashCode()} (NetHost.IsConnected={netHostGameService.NetHost?.IsConnected})"
+                : "";
+            string netServiceIdentity = $"{netService.GetType().FullName}#{netService.GetHashCode()} (NetId={netService.NetId}, Type={netService.Type}{netHostIdentity})";
             if (attemptsRemaining <= 0)
             {
                 MainFile.Logger.Warn($"DisplayName: giving up announcing our own state -- IsConnected never became true for {netServiceIdentity}.");
@@ -161,9 +168,8 @@ internal static class DisplayNameNetworking
         DisplayNameSyncMessage message = new()
         {
             DisplayName = DisplayNameConfig.DisplayName,
-            ShowSteamIdAlongside = DisplayNameConfig.ShowSteamIdAlongside,
         };
-        MainFile.Logger.Info($"DisplayName: broadcasting own state (DisplayName='{message.DisplayName}', ShowSteamIdAlongside={message.ShowSteamIdAlongside}) as NetId={netService.NetId}.");
+        MainFile.Logger.Info($"DisplayName: broadcasting own state (DisplayName='{message.DisplayName}') as NetId={netService.NetId}.");
         netService.SendMessage(message);
     }
 
@@ -175,7 +181,7 @@ internal static class DisplayNameNetworking
 
     private static void HandleMessage(DisplayNameSyncMessage message, ulong senderId)
     {
-        MainFile.Logger.Info($"DisplayName: received sync from senderId={senderId} (DisplayName='{message.DisplayName}', ShowSteamIdAlongside={message.ShowSteamIdAlongside}).");
+        MainFile.Logger.Info($"DisplayName: received sync from senderId={senderId} (DisplayName='{message.DisplayName}').");
         if (senderId == PlatformUtil.GetLocalPlayerId(PlatformUtil.PrimaryPlatform))
         {
             MainFile.Logger.Info("DisplayName: ignoring sync message that looped back to ourselves.");
@@ -183,6 +189,5 @@ internal static class DisplayNameNetworking
         }
 
         RemoteDisplayNames.Set(senderId, message.DisplayName);
-        RemoteShowSteamIdFlags.Set(senderId, message.ShowSteamIdAlongside);
     }
 }

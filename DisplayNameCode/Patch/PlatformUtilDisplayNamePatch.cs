@@ -3,7 +3,6 @@ using System.Reflection;
 using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Config;
 using DisplayName.DisplayNameCode.Multiplayer;
-using DisplayName.DisplayNameCode.Storage;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Platform;
 
@@ -48,11 +47,6 @@ public static class PlatformUtilGetPlayerNameRawPatch
             _loggedPatchInfoOnce = true;
             LogPatchInfo();
         }
-
-        // __result is still whatever vanilla resolved (the Steam username) at this point -- cache it so
-        // UI that wants "the underlying platform username" can recover it even after we override
-        // __result below (see NMultiplayerPlayerExpandedStateReadyPatch / DisplayNameConfig.ShowSteamIdAlongside).
-        RawPlatformNameCache.Set(playerId, __result);
 
         // Logged unconditionally (not just on the local branch) so we can directly see, for every single
         // call, whether playerId actually matches GetLocalPlayerId(platformType) -- if it mysteriously

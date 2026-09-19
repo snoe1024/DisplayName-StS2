@@ -2,8 +2,5 @@
   "DISPLAYNAME.mod_title": "Anzeigename",
 
   "DISPLAYNAME-DISPLAY_NAME.title": "Anzeigename",
-  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "Dies wird im Mehrspielermodus als dein Name angezeigt. Lass das Feld leer, um deinen Steam-Benutzernamen unverändert zu verwenden.",
-
-  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.title": "Steam-Benutzernamen zusätzlich anzeigen",
-  "DISPLAYNAME-SHOW_STEAM_ID_ALONGSIDE.hover.desc": "Auf dem Spielerbildschirm wird der Steam-Benutzername zusätzlich klein in Klammern unten rechts neben dem Anzeigenamen angezeigt.\nAuch wenn ein Spieler mit anderen Einstellungen seinen eigenen Spielerbildschirm betrachtet, hat deine Einstellung Vorrang."
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "Dies wird im Mehrspielermodus als dein Name angezeigt. Lass das Feld leer, um deinen Steam-Benutzernamen unverändert zu verwenden."
 }

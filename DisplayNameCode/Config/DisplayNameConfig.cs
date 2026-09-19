@@ -27,14 +27,6 @@ public sealed class DisplayNameConfig : SimpleModConfig
         set => _displayName = (value ?? "").Length > MaxDisplayNameLength ? value!.Substring(0, MaxDisplayNameLength) : value ?? "";
     }
 
-    /// <summary>
-    /// When enabled, this player's own Steam username is also shown (in small text, in parentheses) next
-    /// to their DisplayName on OTHER players' screens, in the multiplayer player-inventory screen (opened
-    /// by clicking a player during a run). This is the subject's own consent, broadcast to others -- see
-    /// DisplayNameNetworking / RemoteShowSteamIdFlags / NMultiplayerPlayerExpandedStateReadyPatch.
-    /// </summary>
-    public static bool ShowSteamIdAlongside { get; set; } = false;
-
     public override void SetupConfigUI(Control optionContainer)
     {
         GenerateOptionsForAllProperties(optionContainer);
