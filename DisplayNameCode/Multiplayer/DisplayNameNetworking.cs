@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Config;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
@@ -114,14 +115,36 @@ internal static class DisplayNameNetworking
     //   player's identity from us, we just re-broadcast unconditionally whenever any of them fire.
     public static void NotifyLocalStateChanged()
     {
-        AnnounceSelf();
+        AnnounceSelf(attemptsRemaining: 5);
     }
 
-    private static void AnnounceSelf()
+    // Real playtest logs showed NetHostGameService.SendMessage silently no-op (it logs its own error and
+    // returns, it does not throw) when called from inside one of our connection-triggering Harmony
+    // patches, because NetService.IsConnected was still false at that exact synchronous moment -- even
+    // though we were reacting to a just-received real packet from an actually-connected peer. Confirmed
+    // (via the exception's own stack trace) to happen specifically while a third-party "CouchCoop" mod's
+    // custom NetHost wrapper (DualNetHost) was in the call stack; that mod's transport apparently doesn't
+    // always reflect IsConnected accurately at the moment its own message-processing loop invokes our
+    // handler. Rather than silently losing the announcement for the rest of the session (nothing else
+    // would trigger a retry), check IsConnected ourselves first and retry a few times with a short delay.
+    private static void AnnounceSelf(int attemptsRemaining)
     {
         INetGameService? netService = _activeLobby?.NetService ?? _activeLoadRunLobby?.NetService;
         if (netService == null)
         {
+            return;
+        }
+
+        if (!netService.IsConnected)
+        {
+            if (attemptsRemaining <= 0)
+            {
+                MainFile.Logger.Warn("DisplayName: giving up announcing our own state -- NetService.IsConnected never became true.");
+                return;
+            }
+
+            MainFile.Logger.Info($"DisplayName: NetService.IsConnected is false right now, retrying shortly ({attemptsRemaining} attempt(s) left).");
+            _ = RetryAnnounceSelfAfterDelay(attemptsRemaining - 1);
             return;
         }
 
@@ -132,6 +155,12 @@ internal static class DisplayNameNetworking
         };
         MainFile.Logger.Info($"DisplayName: broadcasting own state (DisplayName='{message.DisplayName}', ShowSteamIdAlongside={message.ShowSteamIdAlongside}) as NetId={netService.NetId}.");
         netService.SendMessage(message);
+    }
+
+    private static async Task RetryAnnounceSelfAfterDelay(int attemptsRemaining)
+    {
+        await Task.Delay(500);
+        AnnounceSelf(attemptsRemaining);
     }
 
     private static void HandleMessage(DisplayNameSyncMessage message, ulong senderId)
