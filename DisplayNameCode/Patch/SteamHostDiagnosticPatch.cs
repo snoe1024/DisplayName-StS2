@@ -6,28 +6,27 @@ using MegaCrit.Sts2.Core.Multiplayer.Transport.Steam;
 
 namespace DisplayName.DisplayNameCode.Patch;
 
-// TEMPORARY, diagnostic-only. Investigating why NetHostGameService.IsConnected reads false even while
-// real client connections are clearly succeeding (see CLAUDE.md, "現在の最優先課題"). Delete these
-// classes once the mystery is resolved -- not meant to ship.
+// TEMPORARY, diagnostic-only. Investigating why NetHostGameService.IsConnected can read false during a
+// LoadRunLobby ("resume from save") session even while real client connections are succeeding (see
+// CLAUDE.md, "現在の最優先課題"). A fresh StartRunLobby host has been confirmed clean (IsConnected flips
+// true once and stays true for the whole session, no start/stop churn) -- this diagnostic is only useful
+// for retesting the LoadRunLobby path specifically. Delete these classes once the mystery is resolved --
+// not meant to ship.
 //
-// IMPORTANT (bit ourselves once already, see sts2_dev_knowledge/topics/harmony-patching.md): [HarmonyPatch]
-// MUST go on the class, with [HarmonyPrefix]/[HarmonyPostfix] on the method inside. Putting [HarmonyPatch]
-// directly on the method (all sharing one class, as an earlier version of this file did) compiles fine and
-// harmony.PatchAll() reports no error, but silently patches NOTHING -- confirmed via
-// harmony.GetPatchedMethods() after MainFile.Initialize() now logs that count on every startup specifically
-// to catch this class of mistake early.
+// CAUTION: suspending on SteamHostOnNetStatusChangedDiagnosticPatch or anything else on the Steam
+// networking hot path for more than a couple seconds can starve SteamNetworkingSockets' own internal
+// processing and has caused a native assertion failure in Steam's own client library during testing.
+// Prefer a non-suspending tracepoint (log a message, don't stop) here; only escalate to a real suspending
+// breakpoint once the moment of interest is narrowed down, and resume quickly.
 //
 // Good Rider breakpoint spots (these are OUR code, so line numbers stay put across rebuilds -- unlike
 // trying to break inside decompiled vanilla source):
-// - SteamHostStartHostDiagnosticPatch / SteamHostStopHostDiagnosticPatch: to see the exact call site
-//   (stack trace) triggering the 3x start/stop churn seen in a real "resume from save" host log. Start as
-//   non-suspending (a "tracepoint" -- log a message, don't stop) since these fire during normal connection
-//   setup and suspending here could stall live Steam network processing for both peers.
-// - SteamHostOnNetStatusChangedDiagnosticPatch: condition `!isConnected` -- if this EVER hits, it directly
-//   disproves the assumption that _isConnected must already be true whenever this callback can fire at
-//   all, which is the core contradiction driving this whole investigation.
+// - SteamHostStartHostDiagnosticPatch / SteamHostStopHostDiagnosticPatch: the exact call site (stack
+//   trace) for each start/stop.
+// - SteamHostOnNetStatusChangedDiagnosticPatch: condition `!isConnected` -- catches a connection event
+//   being processed while _isConnected is still false on that instance.
 // - NetHostGameServiceIsConnectedDiagnosticPatch: condition `__result` (i.e. it just flipped true) --
-//   breaks at the very first moment IsConnected becomes true. Inspect __instance's hash and
+//   breaks at the first moment IsConnected becomes true. Inspect __instance's hash and
 //   __instance.NetHost's hash there against what DisplayNameNetworking.AnnounceSelf's own log lines
 //   report, and check the call stack / thread to see who's reading it and from where.
 
