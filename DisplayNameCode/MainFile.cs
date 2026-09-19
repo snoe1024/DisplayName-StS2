@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Reflection;
 using BaseLib.Config;
 using DisplayName.DisplayNameCode.Config;
@@ -38,5 +39,13 @@ public partial class MainFile : Node
         Harmony harmony = new(ModId);
 
         harmony.PatchAll(assembly);
+
+        // harmony.PatchAll() reports no error even when a [HarmonyPatch] attribute is misplaced (e.g. put
+        // directly on a Prefix/Postfix method instead of on its containing class) -- it just silently
+        // patches nothing for that method. Logging the actual patched-method count on every startup makes
+        // that failure mode visible immediately instead of only being caught by a confused live-debugging
+        // session. See sts2_dev_knowledge/topics/harmony-patching.md.
+        int patchedMethodCount = harmony.GetPatchedMethods().Count();
+        Logger.Info($"DisplayName: Harmony patched {patchedMethodCount} method(s) on startup.");
     }
 }
