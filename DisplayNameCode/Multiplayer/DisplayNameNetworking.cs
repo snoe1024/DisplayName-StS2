@@ -115,18 +115,23 @@ internal static class DisplayNameNetworking
     //   player's identity from us, we just re-broadcast unconditionally whenever any of them fire.
     public static void NotifyLocalStateChanged()
     {
-        AnnounceSelf(attemptsRemaining: 5);
+        AnnounceSelf(attemptsRemaining: 30);
     }
 
     // Real playtest logs showed NetHostGameService.SendMessage silently no-op (it logs its own error and
     // returns, it does not throw) when called from inside one of our connection-triggering Harmony
     // patches, because NetService.IsConnected was still false at that exact synchronous moment -- even
-    // though we were reacting to a just-received real packet from an actually-connected peer. Confirmed
-    // (via the exception's own stack trace) to happen specifically while a third-party "CouchCoop" mod's
-    // custom NetHost wrapper (DualNetHost) was in the call stack; that mod's transport apparently doesn't
-    // always reflect IsConnected accurately at the moment its own message-processing loop invokes our
-    // handler. Rather than silently losing the announcement for the rest of the session (nothing else
-    // would trigger a retry), check IsConnected ourselves first and retry a few times with a short delay.
+    // though we were reacting to a just-received real packet from an actually-connected peer. First seen
+    // while a third-party "CouchCoop" mod's custom NetHost wrapper (DualNetHost) was in the call stack, but
+    // CONFIRMED STILL HAPPENING on both host and client after removing CouchCoop entirely (and after
+    // "spirectl", the other suspicious mod, was also gone per Harmony.GetPatchInfo) -- so this is NOT
+    // (only) a CouchCoop-specific problem; the actual cause is still unknown. Per SteamHost.cs, IsConnected
+    // should already be true well before any client even attempts to join (it's set once, synchronously,
+    // right after the listen socket is created during hosting setup, and never reset except at shutdown),
+    // so seeing it false while real packets are flowing is unexplained so far. Extended the retry window
+    // substantially (30 attempts, 1s apart = 30s) since the short window clearly wasn't enough, but this is
+    // a band-aid, not a real fix -- see CLAUDE.md for the open investigation and suggested next steps
+    // (breakpoint on this method / on SteamHost._isConnected to see what's actually going on live).
     private static void AnnounceSelf(int attemptsRemaining)
     {
         INetGameService? netService = _activeLobby?.NetService ?? _activeLoadRunLobby?.NetService;
@@ -137,13 +142,18 @@ internal static class DisplayNameNetworking
 
         if (!netService.IsConnected)
         {
+            // Logging the concrete runtime type + instance identity + NetId so we can tell, from the log
+            // alone, whether this is genuinely the same NetService instance throughout a retry chain (and
+            // the same one StartRunLobby/LoadRunLobby itself is using), or whether something is handing us
+            // a different/stale one.
+            string netServiceIdentity = $"{netService.GetType().FullName}#{netService.GetHashCode()} (NetId={netService.NetId}, Type={netService.Type})";
             if (attemptsRemaining <= 0)
             {
-                MainFile.Logger.Warn("DisplayName: giving up announcing our own state -- NetService.IsConnected never became true.");
+                MainFile.Logger.Warn($"DisplayName: giving up announcing our own state -- IsConnected never became true for {netServiceIdentity}.");
                 return;
             }
 
-            MainFile.Logger.Info($"DisplayName: NetService.IsConnected is false right now, retrying shortly ({attemptsRemaining} attempt(s) left).");
+            MainFile.Logger.Info($"DisplayName: IsConnected is false right now for {netServiceIdentity}, retrying shortly ({attemptsRemaining} attempt(s) left).");
             _ = RetryAnnounceSelfAfterDelay(attemptsRemaining - 1);
             return;
         }
@@ -159,7 +169,7 @@ internal static class DisplayNameNetworking
 
     private static async Task RetryAnnounceSelfAfterDelay(int attemptsRemaining)
     {
-        await Task.Delay(500);
+        await Task.Delay(1000);
         AnnounceSelf(attemptsRemaining);
     }
 
