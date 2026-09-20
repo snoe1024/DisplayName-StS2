@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Multiplayer;
 using Godot;
 using HarmonyLib;
@@ -33,6 +34,14 @@ public static class NRemoteLobbyPlayerReadyPatch
             _subscribed = true;
             RemoteDisplayNames.Updated += OnRemoteDisplayNameUpdated;
         }
+
+        // TEMPORARY diagnostic: confirms whether vanilla's own _Ready() body (which ran just before this
+        // postfix) actually set the nameplate via PlatformUtil.GetPlayerNameRaw for this instance, and
+        // what _isSingleplayer was read as -- see NRemoteLobbyPlayerCreateDiagnosticPatch.cs. Delete once
+        // resolved.
+        bool isSingleplayer = Traverse.Create(__instance).Field("_isSingleplayer").GetValue<bool>();
+        string nameplateTextNow = __instance.GetNode<MegaLabel>("%NameplateLabel").Text;
+        MainFile.Logger.Info($"DisplayName[DIAG]: NRemoteLobbyPlayer._Ready postfix for playerId={__instance.PlayerId}: isSingleplayer={isSingleplayer}, nameplateText='{nameplateTextNow}'.");
     }
 
     private static void OnRemoteDisplayNameUpdated(ulong playerId)

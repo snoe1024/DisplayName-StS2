@@ -14,9 +14,9 @@ namespace DisplayName.DisplayNameCode.Patch;
 public static class NRemoteLobbyPlayerCreateDiagnosticPatch
 {
     [HarmonyPostfix]
-    public static void Postfix(StartRunLobbyPlayer player, PlatformType platform)
+    public static void Postfix(StartRunLobbyPlayer player, PlatformType platform, bool isSingleplayer)
     {
         bool isLocal = player.id == PlatformUtil.GetLocalPlayerId(platform);
-        MainFile.Logger.Info($"DisplayName[DIAG]: NRemoteLobbyPlayer.Create called for playerId={player.id} (isLocal={isLocal}, configuredDisplayName='{DisplayNameConfig.DisplayName}').");
+        MainFile.Logger.Info($"DisplayName[DIAG]: NRemoteLobbyPlayer.Create called for playerId={player.id} (isLocal={isLocal}, isSingleplayer={isSingleplayer}, configuredDisplayName='{DisplayNameConfig.DisplayName}').");
     }
 }
