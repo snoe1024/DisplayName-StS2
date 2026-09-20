@@ -19,9 +19,8 @@ internal struct DisplayNameSyncMessage : INetMessage, IPacketSerializable
     public NetTransferMode Mode => NetTransferMode.Reliable;
 
     // Info (not VeryDebug) so NetMessageBus's own "received message X, sending to N handlers" line shows
-    // up in a normal godot.log without needing verbose logging enabled -- this is what let us confirm from
-    // an actual playtest log that send/receive itself works correctly (see DisplayNameNetworking's own
-    // explicit Log.Info calls for the send/receive events themselves).
+    // up in a normal godot.log without needing verbose logging enabled, alongside DisplayNameNetworking's
+    // own explicit Log.Info calls for the send/receive events themselves.
     public LogLevel LogLevel => LogLevel.Info;
 
     public bool ShouldBuffer => true;

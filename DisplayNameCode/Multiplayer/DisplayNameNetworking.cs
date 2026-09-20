@@ -156,7 +156,8 @@ internal static class DisplayNameNetworking
     // happen even while reacting to a just-received real packet from an actually-connected peer, notably
     // during LoadRunLobby ("resume from save"). Retrying with a real delay, rather than asserting or
     // failing outright, is the only way to reliably get our own announcement out in that case. See
-    // CLAUDE.md for the current state of the underlying IsConnected investigation.
+    // sts2_dev_knowledge/topics/multiplayer-networking.md for why this can still fail permanently in rare
+    // cases (a LoadRunLobby bound to an already-dead NetHostGameService instance) that no retry count fixes.
     private static void AnnounceSelf(int attemptsRemaining)
     {
         INetGameService? netService = _activeLobby?.NetService ?? _activeLoadRunLobby?.NetService;

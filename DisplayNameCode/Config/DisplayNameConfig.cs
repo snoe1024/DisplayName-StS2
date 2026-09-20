@@ -15,11 +15,9 @@ public sealed class DisplayNameConfig : SimpleModConfig
     private static string _displayName = "";
 
     /// <summary>
-    /// The name shown for this player in multiplayer instead of their Steam username. One name per user
-    /// (not per save profile) -- matches how every other multiplayer game handles a display name, rather
-    /// than the original Slay the Spire's per-save-profile convention this mod initially (mistakenly)
-    /// copied. A plain `string` property is rendered as a text field automatically by SimpleModConfig,
-    /// no attribute needed.
+    /// The name shown for this player in multiplayer instead of their Steam username. One name per user,
+    /// not per save profile. A plain `string` property is rendered as a text field automatically by
+    /// SimpleModConfig, no attribute needed.
     /// </summary>
     public static string DisplayName
     {

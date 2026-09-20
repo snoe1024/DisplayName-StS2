@@ -20,14 +20,10 @@ namespace DisplayName.DisplayNameCode.Patch;
 /// If nothing is set (empty DisplayName, or no sync message received yet for that player), falls through
 /// to the vanilla result untouched, i.e. their Steam username.
 ///
-/// [HarmonyPriority(Priority.Last)]: confirmed via godot.log (real playtest, 2026-09) that another mod
-/// ("spirectl.synthetic-lobby-names", a local-network mirroring/dev tool) ALSO patches this exact method.
-/// Our own postfix logic was computing the correct DisplayName on every call, but the OTHER mod's postfix
-/// could still run after ours (same default priority, tie-broken by patch-application order, which we
-/// don't control) and clobber __result afterward -- indistinguishable from our own logic being wrong
-/// without comparing against Harmony.GetPatchInfo. Forcing Priority.Last means our postfix is the outermost
-/// one (runs furthest from the original method), so whatever we set __result to is what every caller
-/// actually sees, regardless of what other mods do to this method.
+/// [HarmonyPriority(Priority.Last)]: if another mod also patches this exact method with a postfix at the
+/// default priority, Harmony's patch-application order (which this mod doesn't control) decides which
+/// postfix runs last and therefore wins. Priority.Last makes our postfix the outermost one regardless of
+/// application order, so whatever we set __result to is what every caller actually sees.
 /// </summary>
 [HarmonyPatch(typeof(PlatformUtil), nameof(PlatformUtil.GetPlayerNameRaw))]
 public static class PlatformUtilGetPlayerNameRawPatch

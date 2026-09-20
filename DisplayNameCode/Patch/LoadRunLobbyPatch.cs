@@ -8,11 +8,10 @@ using MegaCrit.Sts2.Core.Saves;
 namespace DisplayName.DisplayNameCode.Patch;
 
 // LoadRunLobby is a SEPARATE class from StartRunLobby, used for "resume a run from a save file" instead of
-// "start a brand new run" (confirmed in the decompiled source's own doc comment on LoadRunLobby). It was
-// not wired up before, which meant DisplayName sync never even started for anyone resuming a saved
-// multiplayer run -- every player showed as their Steam username the whole time. Unlike StartRunLobby, it
-// has no single PlayerConnected event; instead several of its own methods individually notify
-// ILoadRunLobbyListener when someone (re)connects, so each of those is patched here instead of one event.
+// "start a brand new run" (per the decompiled source's own doc comment on LoadRunLobby). Unlike
+// StartRunLobby, it has no single PlayerConnected event; instead several of its own methods individually
+// notify ILoadRunLobbyListener when someone (re)connects, so each of those is patched here instead of one
+// event.
 
 // The primary constructor: registers our message handler. Used directly when hosting (resuming your own
 // save) and indirectly by the client-join constructor below (which delegates via `: this(...)`).
