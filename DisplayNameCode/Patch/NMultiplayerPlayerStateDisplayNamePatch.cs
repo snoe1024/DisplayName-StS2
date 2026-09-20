@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Multiplayer;
 using Godot;
 using HarmonyLib;
@@ -33,6 +34,12 @@ public static class NMultiplayerPlayerStateReadyPatch
             _subscribed = true;
             RemoteDisplayNames.Updated += OnRemoteDisplayNameUpdated;
         }
+
+        // TEMPORARY diagnostic: mirrors NRemoteLobbyPlayerReadyPatch's -- confirms whether vanilla's own
+        // _Ready() body set the correct nameplate text for the in-run HUD widget specifically. Delete once
+        // resolved.
+        string nameplateTextNow = __instance.GetNode<MegaLabel>("%NameplateLabel").Text;
+        MainFile.Logger.Info($"DisplayName[DIAG]: NMultiplayerPlayerState._Ready postfix for playerId={__instance.Player?.NetId}: nameplateText='{nameplateTextNow}'.");
     }
 
     private static void OnRemoteDisplayNameUpdated(ulong playerId)
