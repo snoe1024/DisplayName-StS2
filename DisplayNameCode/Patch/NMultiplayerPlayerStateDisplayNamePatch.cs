@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Multiplayer;
 using Godot;
 using HarmonyLib;
@@ -15,9 +14,8 @@ namespace DisplayName.DisplayNameCode.Patch;
 /// the thing you actually click to open NMultiplayerPlayerExpandedState) has the exact same bug as
 /// NRemoteLobbyPlayer: it sets its nameplate text exactly once in _Ready() and never re-queries
 /// PlatformUtil afterward (confirmed by reading the decompiled source -- none of its many Refresh* methods
-/// touch the nameplate label). Since a remote player's DisplayName can only arrive after a network
-/// round-trip, this widget very often renders before that arrives, and nothing would otherwise ever
-/// refresh it for the rest of combat. Mirrors NRemoteLobbyPlayerDisplayNamePatch.
+/// touch the nameplate label). Mirrors NRemoteLobbyPlayerDisplayNamePatch, including always re-resolving
+/// the nameplate itself right after _Ready() runs rather than trusting vanilla's one-shot resolution.
 /// </summary>
 [HarmonyPatch(typeof(NMultiplayerPlayerState), "_Ready")]
 public static class NMultiplayerPlayerStateReadyPatch
@@ -35,11 +33,7 @@ public static class NMultiplayerPlayerStateReadyPatch
             RemoteDisplayNames.Updated += OnRemoteDisplayNameUpdated;
         }
 
-        // TEMPORARY diagnostic: mirrors NRemoteLobbyPlayerReadyPatch's -- confirms whether vanilla's own
-        // _Ready() body set the correct nameplate text for the in-run HUD widget specifically. Delete once
-        // resolved.
-        string nameplateTextNow = __instance.GetNode<MegaLabel>("%NameplateLabel").Text;
-        MainFile.Logger.Info($"DisplayName[DIAG]: NMultiplayerPlayerState._Ready postfix for playerId={__instance.Player?.NetId}: nameplateText='{nameplateTextNow}'.");
+        RefreshNameplate(__instance);
     }
 
     private static void OnRemoteDisplayNameUpdated(ulong playerId)
@@ -54,13 +48,22 @@ public static class NMultiplayerPlayerStateReadyPatch
             }
 
             Player player = widget.Player;
-            if (player == null || player.NetId != playerId)
+            if (player != null && player.NetId == playerId)
             {
-                continue;
+                RefreshNameplate(widget);
             }
-
-            MegaLabel nameplate = widget.GetNode<MegaLabel>("%NameplateLabel");
-            nameplate.SetTextAutoSize(PlatformUtil.GetPlayerNameRaw(PlatformUtil.PrimaryPlatform, playerId));
         }
+    }
+
+    private static void RefreshNameplate(NMultiplayerPlayerState widget)
+    {
+        Player player = widget.Player;
+        if (player == null)
+        {
+            return;
+        }
+
+        MegaLabel nameplate = widget.GetNode<MegaLabel>("%NameplateLabel");
+        nameplate.SetTextAutoSize(PlatformUtil.GetPlayerNameRaw(PlatformUtil.PrimaryPlatform, player.NetId));
     }
 }
