@@ -1,5 +1,5 @@
 {
-  "DISPLAYNAME.mod_title": "显示名称",
+  "DISPLAYNAME.mod_title": "昵称",
 
   "DISPLAYNAME-DISPLAY_NAME.title": "显示名称",
   "DISPLAYNAME-DISPLAY_NAME.hover.desc": "将在多人游戏中显示为你的名称。留空则直接使用你的Steam用户名。"
