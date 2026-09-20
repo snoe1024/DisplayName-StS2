@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Config;
-using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Multiplayer.Game.Lobby;
 using MegaCrit.Sts2.Core.Platform;
@@ -37,7 +36,6 @@ internal static class DisplayNameNetworking
 {
     private static StartRunLobby? _activeLobby;
     private static LoadRunLobby? _activeLoadRunLobby;
-    private static INetGameService? _disconnectSubscribedNetService;
 
     /// <summary>
     /// True only while an actual lobby/run session is active. PlatformUtilGetPlayerNameRawPatch gates its
@@ -53,7 +51,6 @@ internal static class DisplayNameNetworking
         _activeLobby = lobby;
         RemoteDisplayNames.Clear();
         lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
-        SubscribeToDisconnect(lobby.NetService);
     }
 
     // Mirrors StartRunLobbyCleanUpPatch's contract: disconnectSession is false when the lobby is merely
@@ -88,7 +85,6 @@ internal static class DisplayNameNetworking
         _activeLoadRunLobby = lobby;
         RemoteDisplayNames.Clear();
         lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
-        SubscribeToDisconnect(lobby.NetService);
     }
 
     public static void OnLoadRunLobbyCleanedUp(LoadRunLobby lobby, bool disconnectSession)
@@ -107,40 +103,6 @@ internal static class DisplayNameNetworking
         }
     }
 
-    // StartRunLobby/LoadRunLobby.CleanUp's own disconnectSession flag is false while merely handing off to
-    // a run that's about to begin (the same NetService carries over), so it deliberately does NOT clear
-    // _activeLobby/_activeLoadRunLobby/RemoteDisplayNames at that point -- otherwise mid-run reconnect
-    // screens would lose their remote-name cache. But that also means nothing else ever clears them once
-    // the run itself later ends and the player returns to the main menu, since neither lobby wrapper class
-    // is even alive by then to have its CleanUp called again. NetService.Disconnected fires once, whenever
-    // the underlying connection is genuinely torn down for good (lobby-cancel OR full run-end alike), so
-    // subscribing to it directly is what actually clears HasActiveLobby for pre-connection screens like
-    // "Join Friend" -- which must show a friend's real Steam name, not a DisplayName cached from a
-    // finished session with them.
-    private static void SubscribeToDisconnect(INetGameService netService)
-    {
-        if (_disconnectSubscribedNetService == netService)
-        {
-            return;
-        }
-
-        if (_disconnectSubscribedNetService != null)
-        {
-            _disconnectSubscribedNetService.Disconnected -= OnNetServiceDisconnected;
-        }
-
-        _disconnectSubscribedNetService = netService;
-        netService.Disconnected += OnNetServiceDisconnected;
-    }
-
-    private static void OnNetServiceDisconnected(NetErrorInfo info)
-    {
-        MainFile.Logger.Info("DisplayName: NetService disconnected, clearing cached lobby/remote-name state.");
-        _activeLobby = null;
-        _activeLoadRunLobby = null;
-        RemoteDisplayNames.Clear();
-    }
-
     // Public entry point for every trigger that should (re-)announce our own current DisplayName:
     // - DisplayNameConfig.ConfigChanged (wired from MainFile).
     // - Every StartRunLobby/LoadRunLobby "someone (re)connected" method patched by name (see
@@ -151,12 +113,28 @@ internal static class DisplayNameNetworking
         AnnounceSelf(attemptsRemaining: 30);
     }
 
-    // NetHostGameService.SendMessage silently no-ops (it logs its own error and returns, it does not
-    // throw) when NetService.IsConnected is false at the exact synchronous moment we call it -- which can
-    // happen even while reacting to a just-received real packet from an actually-connected peer, notably
-    // during LoadRunLobby ("resume from save"). Retrying with a real delay, rather than asserting or
-    // failing outright, is the only way to reliably get our own announcement out in that case. See
-    // CLAUDE.md for the current state of the underlying IsConnected investigation.
+    // Real playtest logs showed NetHostGameService.SendMessage silently no-op (it logs its own error and
+    // returns, it does not throw) when called from inside one of our connection-triggering Harmony
+    // patches, because NetService.IsConnected was still false at that exact synchronous moment -- even
+    // though we were reacting to a just-received real packet from an actually-connected peer.
+    //
+    // CONFIRMED (2026-09-20 log, LoadRunLobby/"resume from save" flow, host side): this is NOT a
+    // third-party mod issue (CouchCoop/spirectl are both gone). The genuinely new lead from that log:
+    // the host's SteamHost cycles through THREE separate StartHost -> StopHost -> StartHost -> StopHost
+    // -> StartHost calls within about a second of the "resume from save" screen opening (grep the raw
+    // godot.log for "Initializing Steam host" / "Stopping host" to see it), all before the client actually
+    // joins. StartHost is asynchronous (awaits a real Steamworks CreateLobby round-trip) and
+    // SteamHost._isConnected is only flipped true at the very end of it; LoadRunLobby is constructed
+    // immediately, without waiting for that to resolve. So IsConnected legitimately starts false, and if
+    // the host's own StartHost/StopHost churn keeps racing against it, our checks may simply never land in
+    // a window where it has actually finished. What's still unexplained: per SteamHost.cs, once a
+    // connection status callback fires (proof _netHost.IsConnected must already be true, since that field
+    // is set on the line immediately before the callback is registered), it should read true from then on
+    // for the rest of that SteamHost's life -- yet every one of our checks kept reading false for the
+    // entire remainder of the session, well after real clients had already connected. Added a second
+    // diagnostic below (NetHost instance identity) to check whether NetHostGameService.NetHost itself is
+    // silently changing under us. Extended the retry window to 30 attempts (30s) as a stopgap -- not a
+    // real fix -- see CLAUDE.md for the current state of this investigation.
     private static void AnnounceSelf(int attemptsRemaining)
     {
         INetGameService? netService = _activeLobby?.NetService ?? _activeLoadRunLobby?.NetService;
