@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Multiplayer;
 using Godot;
@@ -24,6 +26,7 @@ public static class NRemoteLobbyPlayerReadyPatch
 {
     private static readonly List<NRemoteLobbyPlayer> LivePlayers = new();
     private static bool _subscribed;
+    private static bool _loggedPatchInfoOnce;
 
     [HarmonyPostfix]
     public static void Postfix(NRemoteLobbyPlayer __instance)
@@ -37,11 +40,47 @@ public static class NRemoteLobbyPlayerReadyPatch
 
         // TEMPORARY diagnostic: confirms whether vanilla's own _Ready() body (which ran just before this
         // postfix) actually set the nameplate via PlatformUtil.GetPlayerNameRaw for this instance, and
-        // what _isSingleplayer was read as -- see NRemoteLobbyPlayerCreateDiagnosticPatch.cs. Delete once
-        // resolved.
+        // what _isSingleplayer was read as -- see NRemoteLobbyPlayerCreateDiagnosticPatch.cs. A real
+        // playtest showed the local player's own widget ending up with the raw Steam username even though
+        // isSingleplayer read false here (so vanilla's own body should have called
+        // PlatformUtil.GetPlayerNameRaw) AND PlatformUtilGetPlayerNameRawPatch's postfix never logged a
+        // call for that id at all -- meaning something intercepted _Ready() itself before vanilla's body
+        // (or GetPlayerNameRaw) ever ran. Logging Harmony.GetPatchInfo for _Ready once to check for a
+        // competing prefix from another mod. Delete once resolved.
+        if (!_loggedPatchInfoOnce)
+        {
+            _loggedPatchInfoOnce = true;
+            LogReadyPatchInfo();
+        }
+
         bool isSingleplayer = Traverse.Create(__instance).Field("_isSingleplayer").GetValue<bool>();
         string nameplateTextNow = __instance.GetNode<MegaLabel>("%NameplateLabel").Text;
         MainFile.Logger.Info($"DisplayName[DIAG]: NRemoteLobbyPlayer._Ready postfix for playerId={__instance.PlayerId}: isSingleplayer={isSingleplayer}, nameplateText='{nameplateTextNow}'.");
+    }
+
+    private static void LogReadyPatchInfo()
+    {
+        MethodBase? original = AccessTools.Method(typeof(NRemoteLobbyPlayer), "_Ready");
+        if (original == null)
+        {
+            MainFile.Logger.Warn("DisplayName[DIAG]: could not resolve NRemoteLobbyPlayer._Ready via AccessTools.");
+            return;
+        }
+
+        Patches? patches = Harmony.GetPatchInfo(original);
+        if (patches == null)
+        {
+            MainFile.Logger.Info("DisplayName[DIAG]: Harmony.GetPatchInfo returned null for NRemoteLobbyPlayer._Ready.");
+            return;
+        }
+
+        string Describe(HarmonyLib.Patch p) => $"{p.owner}(index={p.index}, priority={p.priority})";
+        MainFile.Logger.Info(
+            "DisplayName[DIAG]: NRemoteLobbyPlayer._Ready patch info -- "
+            + $"Prefixes=[{string.Join(", ", patches.Prefixes.Select(Describe))}] "
+            + $"Postfixes=[{string.Join(", ", patches.Postfixes.Select(Describe))}] "
+            + $"Transpilers=[{string.Join(", ", patches.Transpilers.Select(Describe))}] "
+            + $"Finalizers=[{string.Join(", ", patches.Finalizers.Select(Describe))}]");
     }
 
     private static void OnRemoteDisplayNameUpdated(ulong playerId)
