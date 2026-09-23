@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Reflection;
 using BaseLib.Config;
 using DisplayName.DisplayNameCode.Config;
@@ -39,18 +38,5 @@ public partial class MainFile : Node
         Harmony harmony = new(ModId);
 
         harmony.PatchAll(assembly);
-
-        // harmony.PatchAll() can silently patch fewer methods than intended -- a misplaced [HarmonyPatch]
-        // attribute (on a method instead of its containing class) or a target-resolution mismatch (wrong
-        // overload's parameter types) don't necessarily throw. Logging every actually-patched method's
-        // declaring type + name on every startup makes either failure mode directly visible in godot.log
-        // instead of only being caught by a confused live-debugging session. See
-        // sts2_dev_knowledge/topics/harmony-patching.md.
-        var patchedMethods = harmony.GetPatchedMethods().ToList();
-        Logger.Info($"DisplayName: Harmony patched {patchedMethods.Count} method(s) on startup:");
-        foreach (var method in patchedMethods)
-        {
-            Logger.Info($"DisplayName:   - {method.DeclaringType?.FullName}.{method.Name}");
-        }
     }
 }

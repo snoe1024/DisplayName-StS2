@@ -1,5 +1,4 @@
 using System.Threading.Tasks;
-using DisplayName.DisplayNameCode;
 using DisplayName.DisplayNameCode.Config;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
@@ -49,7 +48,6 @@ internal static class DisplayNameNetworking
 
     public static void OnLobbyCreated(StartRunLobby lobby)
     {
-        MainFile.Logger.Info($"DisplayName: StartRunLobby created (NetService#{lobby.NetService.GetHashCode()}, Type={lobby.NetService.Type}, NetId={lobby.NetService.NetId}), registering sync handlers.");
         _activeLobby = lobby;
         RemoteDisplayNames.Clear();
         lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
@@ -66,7 +64,6 @@ internal static class DisplayNameNetworking
             return;
         }
 
-        MainFile.Logger.Info("DisplayName: StartRunLobby disconnected, unregistering sync handlers and clearing remote cache.");
         lobby.NetService.UnregisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
         if (_activeLobby == lobby)
         {
@@ -77,7 +74,6 @@ internal static class DisplayNameNetworking
 
     private static void OnNetServiceDisconnected(NetErrorInfo info)
     {
-        MainFile.Logger.Info("DisplayName: NetService disconnected, clearing cached lobby/remote-name state.");
         _activeLobby = null;
         _activeLoadRunLobby = null;
         RemoteDisplayNames.Clear();
@@ -118,7 +114,6 @@ internal static class DisplayNameNetworking
     // LoadRunLobbyPatch.cs.
     public static void OnLoadRunLobbyCreated(LoadRunLobby lobby)
     {
-        MainFile.Logger.Info($"DisplayName: LoadRunLobby created (NetService#{lobby.NetService.GetHashCode()}, Type={lobby.NetService.Type}, NetId={lobby.NetService.NetId}), registering sync handlers.");
         _activeLoadRunLobby = lobby;
         RemoteDisplayNames.Clear();
         lobby.NetService.RegisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
@@ -132,7 +127,6 @@ internal static class DisplayNameNetworking
             return;
         }
 
-        MainFile.Logger.Info("DisplayName: LoadRunLobby disconnected, unregistering sync handlers and clearing remote cache.");
         lobby.NetService.UnregisterMessageHandler<DisplayNameSyncMessage>(HandleMessage);
         if (_activeLoadRunLobby == lobby)
         {
@@ -168,22 +162,11 @@ internal static class DisplayNameNetworking
 
         if (!netService.IsConnected)
         {
-            // Logging the concrete runtime type + instance identity + NetId, plus (when castable) the
-            // underlying INetHostGameService.NetHost's own identity + IsConnected read directly -- so we
-            // can tell from the log alone whether NetService itself is stable across a retry chain, AND
-            // whether its NetHost field is quietly pointing at a different transport object than what
-            // last reported false.
-            string netHostIdentity = netService is INetHostGameService netHostGameService
-                ? $", NetHost={netHostGameService.NetHost?.GetType().FullName}#{netHostGameService.NetHost?.GetHashCode()} (NetHost.IsConnected={netHostGameService.NetHost?.IsConnected})"
-                : "";
-            string netServiceIdentity = $"{netService.GetType().FullName}#{netService.GetHashCode()} (NetId={netService.NetId}, Type={netService.Type}{netHostIdentity})";
             if (attemptsRemaining <= 0)
             {
-                MainFile.Logger.Warn($"DisplayName: giving up announcing our own state -- IsConnected never became true for {netServiceIdentity}.");
                 return;
             }
 
-            MainFile.Logger.Info($"DisplayName: IsConnected is false right now for {netServiceIdentity}, retrying shortly ({attemptsRemaining} attempt(s) left).");
             _ = RetryAnnounceSelfAfterDelay(attemptsRemaining - 1);
             return;
         }
@@ -192,7 +175,6 @@ internal static class DisplayNameNetworking
         {
             DisplayName = DisplayNameConfig.DisplayName,
         };
-        MainFile.Logger.Info($"DisplayName: broadcasting own state (DisplayName='{message.DisplayName}') as NetId={netService.NetId}.");
         netService.SendMessage(message);
     }
 
@@ -204,10 +186,8 @@ internal static class DisplayNameNetworking
 
     private static void HandleMessage(DisplayNameSyncMessage message, ulong senderId)
     {
-        MainFile.Logger.Info($"DisplayName: received sync from senderId={senderId} (DisplayName='{message.DisplayName}').");
         if (senderId == PlatformUtil.GetLocalPlayerId(PlatformUtil.PrimaryPlatform))
         {
-            MainFile.Logger.Info("DisplayName: ignoring sync message that looped back to ourselves.");
             return;
         }
 
