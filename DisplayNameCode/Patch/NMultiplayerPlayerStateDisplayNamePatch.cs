@@ -9,14 +9,6 @@ using MegaCrit.Sts2.Core.Platform;
 
 namespace DisplayName.DisplayNameCode.Patch;
 
-/// <summary>
-/// NMultiplayerPlayerState (the persistent in-combat nameplate/HUD widget floating above each player --
-/// the thing you actually click to open NMultiplayerPlayerExpandedState) has the exact same bug as
-/// NRemoteLobbyPlayer: it sets its nameplate text exactly once in _Ready() and never re-queries
-/// PlatformUtil afterward (confirmed by reading the decompiled source -- none of its many Refresh* methods
-/// touch the nameplate label). Mirrors NRemoteLobbyPlayerDisplayNamePatch, including always re-resolving
-/// the nameplate itself right after _Ready() runs rather than trusting vanilla's one-shot resolution.
-/// </summary>
 [HarmonyPatch(typeof(NMultiplayerPlayerState), "_Ready")]
 public static class NMultiplayerPlayerStateReadyPatch
 {

@@ -1,6 +1,6 @@
 {
   "DISPLAYNAME.mod_title": "Apodo",
-
   "DISPLAYNAME-DISPLAY_NAME.title": "Nombre para mostrar",
-  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "Esto se mostrará como tu nombre en multijugador. Deja el campo en blanco para usar tu nombre de usuario de Steam tal cual."
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "Esto se mostrará como tu nombre en multijugador. Deja el campo en blanco para usar tu nombre de usuario de Steam tal cual.",
+  "DISPLAYNAME-DISPLAY_NAME.placeholder": "Nombre de usuario de Steam"
 }

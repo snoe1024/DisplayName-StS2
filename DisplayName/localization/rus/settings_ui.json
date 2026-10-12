@@ -1,6 +1,6 @@
 {
   "DISPLAYNAME.mod_title": "Никнейм",
-
   "DISPLAYNAME-DISPLAY_NAME.title": "Отображаемое имя",
-  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "Это будет отображаться как ваше имя в многопользовательской игре. Оставьте поле пустым, чтобы использовать имя пользователя Steam как есть."
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "Это будет отображаться как ваше имя в многопользовательской игре. Оставьте поле пустым, чтобы использовать имя пользователя Steam как есть.",
+  "DISPLAYNAME-DISPLAY_NAME.placeholder": "Имя пользователя Steam"
 }

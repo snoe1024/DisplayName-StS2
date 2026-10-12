@@ -1,6 +1,6 @@
 {
   "DISPLAYNAME.mod_title": "닉네임",
-
   "DISPLAYNAME-DISPLAY_NAME.title": "표시 이름",
-  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "멀티플레이에서 여러분의 이름으로 표시됩니다. 비워두면 Steam 사용자 이름을 그대로 사용합니다."
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "멀티플레이에서 여러분의 이름으로 표시됩니다. 비워두면 Steam 사용자 이름을 그대로 사용합니다.",
+  "DISPLAYNAME-DISPLAY_NAME.placeholder": "Steam 사용자 이름"
 }

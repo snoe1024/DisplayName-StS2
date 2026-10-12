@@ -1,16 +1,28 @@
-[b]Wichtig: Alle Spieler in der Sitzung benötigen diese Mod[/b]
+[b]Clientseitige Mod: beeinflusst den Spielablauf nicht mehr![/b]
 
-[b]Ein Anzeigename, der im Mehrspielermodus überall angezeigt wird.[/b]
-Lege in den Einstellungen dieser Mod einmal einen Anzeigenamen fest, und er ersetzt im Mehrspielermodus deinen Steam-Benutzernamen. Lässt du ihn leer, ändert sich nichts – du wirst wie gewohnt mit deinem Steam-Benutzernamen angezeigt.
+[b]Dein Anzeigename wird überall im Mehrspielermodus verwendet.[/b]
+Dein gewählter Anzeigename wird statt deines Steam-Benutzernamens als Spielername angezeigt.
+Lass das Feld leer, um deinen Steam-Benutzernamen zu behalten.
+
+[b]Wenn andere Spieler diese Mod nicht installiert haben[/b]
+Hat der Host RitsuLib, teilen Spieler mit dieser Mod ihre Anzeigenamen.
+Spieler ohne diese Mod sehen deinen Steam-Benutzernamen.
+Ohne RitsuLib beim Host ändert sich nur dein eigener Anzeigename auf deinem eigenen Bildschirm.
 
 [b]Unterstützte Zweige[/b]
-Funktioniert sowohl im Standardzweig als auch im Public-Beta-Zweig.
+Unterstützt den Standardzweig und Public Beta.
 
-[b]Sprachen[/b]
-Der Entwickler ist Japaner, daher wurde die Mod per KI maschinell übersetzt. Korrekturvorschläge sind sehr willkommen!
+[b]Benötigte Mod[/b]
+RitsuLib (wird automatisch als Workshop-Abhängigkeit installiert)
+[b]Damit nicht mehr alle Mitspieler diese Mod benötigen, wurde die Abhängigkeit von BaseLib geändert.[/b]
+Wird die Mod nach dem Update nicht richtig geladen, prüfe, ob RitsuLib installiert ist.
 
-[b]Voraussetzungen[/b]
-BaseLib (wird automatisch als Workshop-Abhängigkeit installiert).
+[b]Noch mehr Spaß im Mehrspielermodus[/b]
+Schau dir gerne auch meine anderen Mehrspieler-Mods an!
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811854507]Emote+[/url]
+
+[b]Übersetzung[/b]
+Der Entwickler spricht Japanisch, daher sind alle anderen Sprachen maschinell übersetzt. Korrekturvorschläge sind sehr willkommen!
 
 [b]Feedback[/b]
 Fehlerberichte und Übersetzungskorrekturen sind als GitHub-Issues willkommen:

@@ -1,6 +1,6 @@
 {
   "DISPLAYNAME.mod_title": "ニックネームmod",
-
   "DISPLAYNAME-DISPLAY_NAME.title": "表示名",
-  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "マルチプレイであなた名前として表示されます。空欄の場合、Steamのユーザー名がそのまま表示されます。"
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "マルチプレイであなた名前として表示されます。空欄の場合、Steamのユーザー名がそのまま表示されます。",
+  "DISPLAYNAME-DISPLAY_NAME.placeholder": "Steamのユーザー名"
 }

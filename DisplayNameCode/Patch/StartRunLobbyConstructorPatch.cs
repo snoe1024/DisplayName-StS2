@@ -6,9 +6,6 @@ using MegaCrit.Sts2.Core.Runs;
 
 namespace DisplayName.DisplayNameCode.Patch;
 
-// StartRunLobby is the earliest point a NetGameService exists for the lobby, so this is where
-// DisplayNameNetworking registers its message handler and PlayerConnected callback. Only the 4-arg
-// constructor needs patching: the 5-arg overload (Daily runs) delegates to it via `: this(...)`.
 [HarmonyPatch(typeof(StartRunLobby), MethodType.Constructor, typeof(GameMode), typeof(INetGameService), typeof(IStartRunLobbyListener), typeof(int))]
 public static class StartRunLobbyConstructorPatch
 {

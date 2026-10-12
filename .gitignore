@@ -8,3 +8,7 @@ riderModule.iml
 *.log
 
 CLAUDE.md
+AGENTS.md
+docs/
+.local/
+.claude/

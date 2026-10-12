@@ -1,59 +1,60 @@
-using System.Collections.Generic;
-using BaseLib.Config;
+using System.IO;
 using Godot;
+using STS2RitsuLib;
+using STS2RitsuLib.Data;
+using STS2RitsuLib.Settings;
+using STS2RitsuLib.Utils.Persistence;
 
 namespace DisplayName.DisplayNameCode.Config;
 
-[ConfigHoverTipsByDefault]
-public sealed class DisplayNameConfig : SimpleModConfig
+public static class DisplayNameConfig
 {
-    // Matches Steam's own display name length limit (32 characters). Not attempting to replicate Steam's
-    // additional multi-byte/character-class rules -- this mod is only ever used among friends, so there's
-    // no anti-troll reason to bother.
-    private const int MaxDisplayNameLength = 32;
+    private const string DataKey = "settings";
+    private static ModDataStore? _store;
+    private static DisplayNameSettings _settings = new();
+    public static event Action? Changed;
+    public static string DisplayName => _settings.Name;
 
-    private static string _displayName = "";
-
-    /// <summary>
-    /// The name shown for this player in multiplayer instead of their Steam username. One name per user,
-    /// not per save profile. A plain `string` property is rendered as a text field automatically by
-    /// SimpleModConfig, no attribute needed.
-    /// </summary>
-    public static string DisplayName
+    public static void Initialize()
     {
-        get => _displayName;
-        set => _displayName = (value ?? "").Length > MaxDisplayNameLength ? value!.Substring(0, MaxDisplayNameLength) : value ?? "";
+        using (RitsuLibFramework.BeginModDataRegistration(MainFile.ModId, initializeProfileIfReady: false))
+        {
+            _store = RitsuLibFramework.GetDataStore(MainFile.ModId);
+            _store.Register<DisplayNameSettings>(DataKey, "settings.json", SaveScope.Global,
+                syncToCloud: false, autoCreateIfMissing: false);
+        }
+        _store.InitializeGlobal();
+        _settings = _store.Get<DisplayNameSettings>(DataKey);
+        bool hasNewSettings = _store.HasExistingData(DataKey);
+        string legacyPath = Path.Combine(OS.GetUserDataDir(), "mod_configs", "DisplayName.cfg");
+        _settings.Name = LegacySettingsMigration.Resolve(hasNewSettings, _settings.Name, legacyPath,
+            message => MainFile.Logger.Warn(message));
+        if (!hasNewSettings)
+        {
+            _store.Save(DataKey);
+        }
+
+        var binding = new ModSettingsCallbackValueBinding<string>(MainFile.ModId, DataKey,
+            SaveScope.Global, () => DisplayName, SetName, () => _store.Save(DataKey));
+        RitsuLibFramework.RegisterModSettings(MainFile.ModId, page => page
+            .WithTitle(Text("DISPLAYNAME.mod_title", "Display Name"))
+            .WithModDisplayName(Text("DISPLAYNAME.mod_title", "Display Name"))
+            .WithVisibleOnHostSurfaces(ModSettingsHostSurface.All)
+            .AddSection("general", section => section.AddString("display_name",
+                Text("DISPLAYNAME-DISPLAY_NAME.title", "Display name"), binding,
+                placeholder: Text("DISPLAYNAME-DISPLAY_NAME.placeholder", "Steam username"),
+                maxLength: DisplayNameRules.MaxLength,
+                description: Text("DISPLAYNAME-DISPLAY_NAME.hover.desc", "Leave empty to use your Steam username."))));
     }
 
-    public override void SetupConfigUI(Control optionContainer)
+    private static ModSettingsText Text(string key, string fallback) =>
+        ModSettingsText.LocString("settings_ui", key, fallback);
+
+    private static void SetName(string value)
     {
-        GenerateOptionsForAllProperties(optionContainer);
-
-        // BaseLib's auto-generated LineEdit row renders its text noticeably smaller than the rest of the
-        // settings screen, and doesn't enforce any length limit on typing (only our setter's clamp on
-        // commit). Reach into the generated control tree to fix both: a larger font, and a real MaxLength
-        // so typing itself stops at the limit instead of silently truncating on save.
-        foreach (LineEdit lineEdit in FindLineEdits(optionContainer))
-        {
-            lineEdit.MaxLength = MaxDisplayNameLength;
-            int currentFontSize = lineEdit.GetThemeFontSize("font_size");
-            lineEdit.AddThemeFontSizeOverride("font_size", Mathf.FloorToInt(Mathf.Max(currentFontSize, 12) * 1.5));
-        }
-    }
-
-    private static IEnumerable<LineEdit> FindLineEdits(Node node)
-    {
-        foreach (Node child in node.GetChildren())
-        {
-            if (child is LineEdit lineEdit)
-            {
-                yield return lineEdit;
-            }
-
-            foreach (LineEdit nested in FindLineEdits(child))
-            {
-                yield return nested;
-            }
-        }
+        string normalized = DisplayNameRules.Normalize(value);
+        if (_settings.Name == normalized) return;
+        _settings.Name = normalized;
+        Changed?.Invoke();
     }
 }

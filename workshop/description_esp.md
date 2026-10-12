@@ -1,17 +1,29 @@
-[b]Importante: todos los jugadores de la sesión necesitan este mod[/b]
+[b]Mod del lado del cliente: ¡ya no afecta al desarrollo de la partida![/b]
 
-[b]Un solo nombre para mostrar, visible en todas partes del multijugador.[/b]
-Establece un nombre para mostrar una vez en los ajustes de este mod y sustituirá tu nombre de usuario de Steam en el multijugador. Si lo dejas en blanco, no cambia nada: se te mostrará con tu nombre de usuario de Steam como de costumbre.
+[b]Tu nombre para mostrar se utiliza en todas las situaciones del multijugador.[/b]
+El nombre para mostrar que elijas se usa como nombre de jugador en lugar de tu nombre de Steam.
+Deja el campo vacío para conservar tu nombre de Steam.
+
+[b]Si otros jugadores no tienen este mod[/b]
+Si el anfitrión tiene RitsuLib, los jugadores con este mod comparten sus nombres para mostrar.
+Los jugadores sin este mod ven tu nombre de Steam.
+Sin RitsuLib en el anfitrión, solo cambia tu propio nombre para mostrar en tu pantalla.
 
 [b]Compatibilidad de ramas[/b]
-Funciona tanto en la rama predeterminada como en la Public Beta.
+Compatible con la rama predeterminada y Public Beta.
 
-[b]Idiomas[/b]
-El autor es japonés, por lo que este mod está traducido automáticamente por IA. ¡Las correcciones y sugerencias son muy bienvenidas!
+[b]Mod necesario[/b]
+RitsuLib (se instala automáticamente como dependencia del Workshop)
+[b]Para que ya no sea necesario que todos los jugadores tengan este mod, se ha sustituido BaseLib como dependencia.[/b]
+Si el mod no se carga correctamente tras actualizarlo, comprueba que RitsuLib esté instalado.
 
-[b]Requisitos[/b]
-BaseLib (se instala automáticamente como dependencia del Workshop).
+[b]Más diversión en multijugador[/b]
+¡Echa un vistazo también a mis otros mods para multijugador!
+[url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811854507]Emote+[/url]
+
+[b]Traducción[/b]
+El desarrollador habla japonés, por lo que los demás idiomas están traducidos automáticamente. ¡Las correcciones son muy bienvenidas!
 
 [b]Comentarios[/b]
-Los informes de errores y las correcciones de traducción son bienvenidos como issues de GitHub:
+Puedes enviar informes de errores y correcciones de traducción mediante issues de GitHub:
 [url=https://github.com/snoe1024/DisplayName-StS2]https://github.com/snoe1024/DisplayName-StS2[/url]

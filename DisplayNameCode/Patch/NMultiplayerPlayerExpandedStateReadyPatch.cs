@@ -10,21 +10,6 @@ using MegaCrit.Sts2.Core.Runs;
 
 namespace DisplayName.DisplayNameCode.Patch;
 
-/// <summary>
-/// NMultiplayerPlayerExpandedState is the player-inventory screen (relics/potions/deck) shown when you
-/// click another player during a run. Vanilla resolves the player's name exactly once in _Ready()
-/// (Core/Nodes/Multiplayer/NMultiplayerPlayerExpandedState.cs, gameplay_ui.json's
-/// "MULTIPLAYER_EXPANDED_STATE.title" = "[center][blue]{PlayerName}[/blue] [gold]{Character}[/gold][/center]"):
-///   LocString locString = new LocString("gameplay_ui", "MULTIPLAYER_EXPANDED_STATE.title");
-///   locString.Add("PlayerName", PlatformUtil.GetPlayerName(platform, _player.NetId));
-///   locString.Add("Character", _player.Character.Title);
-///   _playerNameLabel.Text = locString.GetFormattedText();
-/// Since a remote player's DisplayName can only arrive after a network round-trip, this screen very often
-/// opens before that sync message arrives, and (mirroring NRemoteLobbyPlayer / NMultiplayerPlayerState)
-/// nothing else ever re-resolves the name afterward. We rebuild the SAME LocString (same key, so any
-/// language's template/word order is respected) once at _Ready, and again whenever RemoteDisplayNames
-/// reports an update for this player while the screen is still open.
-/// </summary>
 [HarmonyPatch(typeof(NMultiplayerPlayerExpandedState), "_Ready")]
 public static class NMultiplayerPlayerExpandedStateReadyPatch
 {

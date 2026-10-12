@@ -1,6 +1,6 @@
 {
   "DISPLAYNAME.mod_title": "Display Name",
-
   "DISPLAYNAME-DISPLAY_NAME.title": "Display Name",
-  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "This will be displayed as your name in multiplayer. Leave blank to use your Steam username as-is."
+  "DISPLAYNAME-DISPLAY_NAME.hover.desc": "This will be displayed as your name in multiplayer. Leave blank to use your Steam username as-is.",
+  "DISPLAYNAME-DISPLAY_NAME.placeholder": "Steam username"
 }
